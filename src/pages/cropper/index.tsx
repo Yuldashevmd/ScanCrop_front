@@ -200,8 +200,11 @@ export const Cropper: React.FC = () => {
   return (
     <div className="max-w-5xl mx-auto px-4 py-10 text-center">
       <h1 className="text-3xl md:text-4xl font-semibold text-white mb-3">Photo Cropper</h1>
-      <p className="text-gray-200 mb-8 text-sm md:text-base">
+      <p className="text-gray-200 mb-4 text-sm md:text-base">
         Upload one or multiple photos to crop.
+      </p>
+      <p className="text-red-300 mb-8 text-sm md:text-base">
+        Your data not saved on platforms to provide privacy
       </p>
 
       <input
