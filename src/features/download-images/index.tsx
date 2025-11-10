@@ -56,10 +56,10 @@ export function DownloadImages({ results }: IProps) {
   }, [results]);
 
   return (
-    <div className="mt-8">
+    <div className="mt-8 w-fit">
       <button
         onClick={downloadAll}
-        className="px-10 py-3 bg-indigo-500 text-white font-bold rounded-full shadow-lg hover:bg-indigo-700 transition cursor-pointer">
+        className="from-[#245580] to-[#337ab7] bg-gradient-to-t px-3 py-1 rounded text-center cursor-pointer w-full min-h-[38px] text-white">
         Download all photos (zip)
       </button>
     </div>
