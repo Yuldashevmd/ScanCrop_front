@@ -27,15 +27,50 @@ export function ResultList({ results }: { results: CroppedResult[] }) {
   );
 }
 
-function SingleDownload({ r }: { r: CroppedResult }) {
+declare global {
+  interface Window {
+    showSaveFilePicker?: (options?: any) => Promise<any>;
+  }
+}
+
+export function SingleDownload({ r }: { r: CroppedResult }) {
+  const handleSave = async () => {
+    try {
+      const response = await fetch(r.url);
+      const blob = await response.blob();
+
+      if (window.showSaveFilePicker) {
+        const fileHandle = await window.showSaveFilePicker({
+          suggestedName: `${r.name.replace(/\.[^/.]+$/, '')}_crop.jpg`,
+          types: [{ description: 'JPEG image', accept: { 'image/jpeg': ['.jpg'] } }],
+        });
+
+        const writable = await fileHandle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+      } else {
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `${r.name.replace(/\.[^/.]+$/, '')}_crop.jpg`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+      }
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        console.log('User cancelled save.');
+
+        return;
+      }
+      console.error('File save failed', err);
+      alert('File save failed. Please try again.');
+    }
+  };
+
   return (
-    <a
-      href={r.url}
-      download={`${r.name.replace(/\.[^/.]+$/, '')}_crop.jpg`}
-      className="mt-3 w-full">
-      <button className="w-full py-2 rounded-full bg-white text-indigo-600 font-semibold shadow-md hover:bg-indigo-50 transition">
-        Download
-      </button>
-    </a>
+    <button
+      onClick={handleSave}
+      className="mt-3 w-full py-2 rounded-full bg-white text-indigo-600 font-semibold shadow-md hover:bg-indigo-50 transition">
+      Save As...
+    </button>
   );
 }
