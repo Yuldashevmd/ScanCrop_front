@@ -42,7 +42,7 @@ export const Cropper: React.FC = () => {
 
   // === YAKKA RASMNI CROP QILISH FUNKSIYASI ===
   const cropSingleImage = useCallback(
-    (file: File): Promise<string> =>
+    (file: File): Promise<string | null> =>
       new Promise((resolve, reject) => {
         if (!modelsLoaded) return reject('Models not loaded yet.');
 
@@ -52,7 +52,16 @@ export const Cropper: React.FC = () => {
 
         img.onload = async () => {
           try {
-            // 1️⃣ Yuzni aniqlaymiz
+            // 🟢 1️⃣ Rasm 5:5 (ya’ni 1:1) formatda ekanligini tekshiramiz
+            const aspectRatio = img.width / img.height;
+            if (Math.abs(aspectRatio - 1) < 0.02) {
+              // Faqat xabar chiqadi, natijaga qo‘shilmaydi
+              setError(`${file.name} rasm 5:5 o‘lchamda, crop qilinmaydi.`);
+
+              return resolve(null);
+            }
+
+            // 2️⃣ Yuzni aniqlaymiz
             const detection = await faceapi
               .detectSingleFace(
                 img,
@@ -62,7 +71,7 @@ export const Cropper: React.FC = () => {
 
             if (!detection) throw new Error('Face not detected');
 
-            // 2️⃣ Ko‘zlar markazini aniqlaymiz
+            // 3️⃣ Ko‘zlar markazini aniqlaymiz
             const leftEye = detection.landmarks.getLeftEye();
             const rightEye = detection.landmarks.getRightEye();
 
@@ -75,22 +84,17 @@ export const Cropper: React.FC = () => {
               y: rightEye.reduce((s, p) => s + p.y, 0) / rightEye.length,
             };
 
-            // 3️⃣ Ko‘zlar orasidagi burchakni hisoblaymiz
+            // 4️⃣ Rasmni aylantirish
             const dy = rightEyeCenter.y - leftEyeCenter.y;
             const dx = rightEyeCenter.x - leftEyeCenter.x;
             const angle = Math.atan2(dy, dx);
 
-            // 4️⃣ Rasmni aylantiramiz
-            // Rasmni aylantirish uchun kattaroq canvas
             const rotateCanvas = document.createElement('canvas');
             const rctx = rotateCanvas.getContext('2d')!;
-
-            // Aylantirish paytida rasm chiqib ketmasligi uchun 1.5 barobar kengroq joy
             const biggerSize = Math.max(img.width, img.height) * 1.5;
             rotateCanvas.width = biggerSize;
             rotateCanvas.height = biggerSize;
 
-            // Markazga joylashtirib aylantiramiz
             rctx.translate(biggerSize / 2, biggerSize / 2);
             rctx.rotate(-angle);
             rctx.drawImage(img, -img.width / 2, -img.height / 2);
@@ -99,7 +103,6 @@ export const Cropper: React.FC = () => {
             rotatedImage.src = rotateCanvas.toDataURL();
 
             rotatedImage.onload = async () => {
-              // 5️⃣ Aylantirilgan rasmda yuzni qayta aniqlaymiz
               const detRotated = await faceapi
                 .detectSingleFace(
                   rotatedImage,
@@ -115,7 +118,6 @@ export const Cropper: React.FC = () => {
 
               const { landmarks } = detRotated;
               const jaw = landmarks.getJawOutline();
-
               const jawTop = Math.min(...jaw.map((p) => p.y));
               const jawBottom = Math.max(...jaw.map((p) => p.y));
               const faceHeight = jawBottom - jawTop;
@@ -123,7 +125,6 @@ export const Cropper: React.FC = () => {
 
               const leftEye2 = landmarks.getLeftEye();
               const rightEye2 = landmarks.getRightEye();
-
               const eyeCenterX = (leftEye2[0].x + rightEye2[3].x) / 2;
               const eyeCenterY =
                 (leftEye2.reduce((s, p) => s + p.y, 0) + rightEye2.reduce((s, p) => s + p.y, 0)) /
@@ -133,7 +134,6 @@ export const Cropper: React.FC = () => {
               const dx2 = CANVAS_SIZE / 2 - eyeCenterX * scale;
               const dy2 = desiredEyeY - eyeCenterY * scale - CANVAS_SIZE * TOP_MARGIN_RATIO;
 
-              // 6️⃣ Crop + oqartirish
               const canvas = document.createElement('canvas');
               canvas.width = CANVAS_SIZE;
               canvas.height = CANVAS_SIZE;
@@ -148,7 +148,7 @@ export const Cropper: React.FC = () => {
                 rotatedImage.height * scale,
               );
 
-              // 7️⃣ Oqartirish effekti
+              // Oqartirish effekti
               const imageData = ctx.getImageData(0, 0, CANVAS_SIZE, CANVAS_SIZE);
               const data = imageData.data;
               for (let i = 0; i < data.length; i += 4) {
@@ -186,7 +186,7 @@ export const Cropper: React.FC = () => {
           const result = await cropSingleImage(file);
           if (result) processed.push({ id: crypto.randomUUID(), name: file.name, url: result });
         } catch {
-          setError(`Some pictures is not detected: ${file.name}`);
+          setError(`Some pictures could not be detected: ${file.name}`);
         }
       }
 
