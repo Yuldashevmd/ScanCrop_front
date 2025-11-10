@@ -46,17 +46,16 @@ export function SingleDownload({ r }: { r: CroppedResult }) {
             types: [{ description: 'JPEG image', accept: { 'image/jpeg': ['.jpg'] } }],
           });
 
-          if (!fileHandle) return; // foydalanuvchi Cancel tugmasini bosdi
+          if (!fileHandle) return;
 
           const writable = await fileHandle.createWritable();
           await writable.write(blob);
           await writable.close();
         } catch (err: any) {
-          if (err.name === 'AbortError') return; // foydalanuvchi bekor qildi
+          if (err.name === 'AbortError') return;
           throw err;
         }
       } else {
-        // 🔹 Fallback: avtomatik download
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
         link.download = `${r.name.replace(/\.[^/.]+$/, '')}_crop.jpg`;

@@ -12,18 +12,47 @@ interface IProps {
   results: CroppedResult[];
 }
 
-export function DownloadImages(props: IProps) {
-  const { results } = props;
+declare global {
+  interface Window {
+    showSaveFilePicker?: (options?: any) => Promise<any>;
+  }
+}
 
+export function DownloadImages({ results }: IProps) {
   const downloadAll = useCallback(async () => {
-    const zip = new JSZip();
-    results.forEach((r) => {
-      const base64 = r.url.split(',')[1];
-      zip.file(`${r.name.replace(/\.[^/.]+$/, '')}_crop.jpg`, base64, { base64: true });
-    });
+    try {
+      // Zip yaratish
+      const zip = new JSZip();
+      results.forEach((r) => {
+        const base64 = r.url.split(',')[1];
+        zip.file(`${r.name.replace(/\.[^/.]+$/, '')}_crop.jpg`, base64, { base64: true });
+      });
 
-    const blob = await zip.generateAsync({ type: 'blob' });
-    saveAs(blob, 'cropped_photos.zip');
+      const blob = await zip.generateAsync({ type: 'blob' });
+
+      if (window.showSaveFilePicker) {
+        try {
+          const fileHandle = await window.showSaveFilePicker({
+            suggestedName: 'cropped_photos.zip',
+            types: [{ description: 'ZIP file', accept: { 'application/zip': ['.zip'] } }],
+          });
+
+          if (!fileHandle) return;
+
+          const writable = await fileHandle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+        } catch (err: any) {
+          if (err.name === 'AbortError') return;
+          throw err;
+        }
+      } else {
+        saveAs(blob, 'cropped_photos.zip');
+      }
+    } catch (err) {
+      console.error('Failed to save zip file', err);
+      alert('Failed to save zip file. Please try again.');
+    }
   }, [results]);
 
   return (
