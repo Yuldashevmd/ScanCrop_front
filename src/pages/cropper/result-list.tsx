@@ -40,27 +40,30 @@ export function SingleDownload({ r }: { r: CroppedResult }) {
       const blob = await response.blob();
 
       if (window.showSaveFilePicker) {
-        const fileHandle = await window.showSaveFilePicker({
-          suggestedName: `${r.name.replace(/\.[^/.]+$/, '')}_crop.jpg`,
-          types: [{ description: 'JPEG image', accept: { 'image/jpeg': ['.jpg'] } }],
-        });
+        try {
+          const fileHandle = await window.showSaveFilePicker({
+            suggestedName: `${r.name.replace(/\.[^/.]+$/, '')}_crop.jpg`,
+            types: [{ description: 'JPEG image', accept: { 'image/jpeg': ['.jpg'] } }],
+          });
 
-        const writable = await fileHandle.createWritable();
-        await writable.write(blob);
-        await writable.close();
+          if (!fileHandle) return; // foydalanuvchi Cancel tugmasini bosdi
+
+          const writable = await fileHandle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+        } catch (err: any) {
+          if (err.name === 'AbortError') return; // foydalanuvchi bekor qildi
+          throw err;
+        }
       } else {
+        // 🔹 Fallback: avtomatik download
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
         link.download = `${r.name.replace(/\.[^/.]+$/, '')}_crop.jpg`;
         link.click();
         URL.revokeObjectURL(link.href);
       }
-    } catch (err: any) {
-      if (err.name === 'AbortError') {
-        console.log('User cancelled save.');
-
-        return;
-      }
+    } catch (err) {
       console.error('File save failed', err);
       alert('File save failed. Please try again.');
     }
