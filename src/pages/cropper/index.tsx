@@ -198,25 +198,40 @@ export const Cropper: React.FC = () => {
 
   // === UI ===
   return (
-    <div className="max-w-5xl mx-auto px-4 py-10 text-center">
-      <h1 className="text-3xl md:text-4xl font-semibold text-white mb-3">Photo Cropper</h1>
-      <p className="text-gray-200 mb-4 text-sm md:text-base">
-        Upload one or multiple photos to crop.
-      </p>
-      <p className="text-red-300 mb-8 text-sm md:text-base">
-        Your data not saved on platforms to provide privacy
-      </p>
+    <div>
+      <div className="mx-[10px] md:mx-[40px] mt-[2.5rem] mb-[1.5rem] text-black text-center space-y-1">
+        <h3 className=" text-[24px]">Upload photo to crop</h3>
+        <p className="text-sm sm:text-base">Your data not saved on platforms to provide privacy</p>
+      </div>
+      <hr className="text-gray-200 my-3" />
 
-      <input
-        type="file"
-        accept="image/*"
-        multiple
-        onChange={handleFiles}
-        className="w-full border border-white border-dashed rounded-2xl p-6 text-white cursor-pointer bg-white/10 hover:bg-white/20 transition"
-      />
-      <Loading loading={loading} />
-      <ErrorBoundary error={error} />
-      <ResultList results={results} />
+      <div className="flex justify-center">
+        <label
+          htmlFor="upload"
+          className="cursor-pointer w-full border border-gray-300 px-[12px] py-[6px] min-h-[38px] rounded">
+          Click to upload images
+        </label>
+        <input
+          id="upload"
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={handleFiles}
+          placeholder="Please upload images"
+          className="hidden"
+        />
+      </div>
+
+      <div className="border border-gray-300 rounded my-4">
+        <div className="h-[45px] from-gray-[#f5f5f5] to-[#e8e8e8] bg-gradient-to-b p-4 flex items-center text-gray-800">
+          Images
+        </div>
+        <div className="px-6 py-4">
+          <Loading loading={loading} />
+          <ErrorBoundary error={error} />
+          <ResultList results={results} />
+        </div>
+      </div>
     </div>
   );
 };

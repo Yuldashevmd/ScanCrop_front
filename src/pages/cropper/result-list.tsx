@@ -20,18 +20,16 @@ export function ResultList({ results }: { results: CroppedResult[] }) {
   return (
     <>
       {results.length > 0 && (
-        <div className="mt-10">
+        <>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {results.map((r) => (
-              <div
-                key={r.id}
-                className="bg-white/10 backdrop-blur-md p-4 rounded-2xl flex flex-col items-center shadow-lg">
+              <div key={r.id} className="flex flex-col items-center space-y-1">
                 <button onClick={() => openImage(r.url)}>
                   <img
                     loading="lazy"
                     src={r.url}
                     alt={r.name}
-                    className="rounded-xl w-full aspect-square object-cover border border-white/20"
+                    className="rounded w-full aspect-square object-cover border border-gray-200 shadow-sm"
                   />
                 </button>
                 <SingleDownload r={r} />
@@ -39,7 +37,7 @@ export function ResultList({ results }: { results: CroppedResult[] }) {
             ))}
           </div>
           <DownloadImages results={results} />
-        </div>
+        </>
       )}
       {/* Dialog */}
       <Dialog isOpen={isOpen} imageUrl={imageUrl} closeImage={closeImage} />
@@ -91,8 +89,8 @@ export function SingleDownload({ r }: { r: CroppedResult }) {
   return (
     <button
       onClick={handleSave}
-      className="mt-3 w-full py-2 rounded-full bg-white text-indigo-600 font-semibold shadow-md hover:bg-indigo-50 transition">
-      Save As...
+      className="from-[#245580] to-[#337ab7] bg-gradient-to-t px-3 py-1 rounded text-center cursor-pointer w-full min-h-[38px] text-white">
+      Save As
     </button>
   );
 }

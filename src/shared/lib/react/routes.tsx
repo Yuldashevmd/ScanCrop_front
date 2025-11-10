@@ -1,14 +1,16 @@
 import { Cropper } from 'pages/cropper';
-// import { IDScannerPro } from 'pages/passport';
+import { Layout } from 'pages/layout';
 import { createBrowserRouter } from 'react-router';
 
 export const routes = createBrowserRouter([
   {
     path: '/',
-    element: <Cropper />,
+    element: <Layout />,
+    children: [
+      {
+        index: true,
+        element: <Cropper />,
+      },
+    ],
   },
-  // {
-  //   path: '/passport',
-  //   element: <IDScannerPro />,
-  // },
 ]);
