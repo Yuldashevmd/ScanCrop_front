@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, type ChangeEvent } from 'react';
 import * as faceapi from 'face-api.js';
 import { Loading } from './loading';
-import { Error } from './error';
+import { ErrorBoundary } from './error';
 import { ResultList } from './result-list';
 
 const CANVAS_SIZE = 600;
@@ -42,9 +42,9 @@ export const Cropper: React.FC = () => {
 
   // === YAKKA RASMNI CROP QILISH FUNKSIYASI ===
   const cropSingleImage = useCallback(
-    (file: File): Promise<string> =>
+    (file: File): Promise<string | null> =>
       new Promise((resolve, reject) => {
-        if (!modelsLoaded) return reject();
+        if (!modelsLoaded) return reject('Models not loaded yet.');
 
         const img = new Image();
         img.crossOrigin = 'anonymous';
@@ -52,6 +52,16 @@ export const Cropper: React.FC = () => {
 
         img.onload = async () => {
           try {
+            // 🟢 1️⃣ Rasm 5:5 (ya’ni 1:1) formatda ekanligini tekshiramiz
+            const aspectRatio = img.width / img.height;
+            if (Math.abs(aspectRatio - 1) < 0.02) {
+              // Faqat xabar chiqadi, natijaga qo‘shilmaydi
+              setError(`${file.name} rasm 5:5 o‘lchamda, crop qilinmaydi.`);
+
+              return resolve(null);
+            }
+
+            // 2️⃣ Yuzni aniqlaymiz
             const detection = await faceapi
               .detectSingleFace(
                 img,
@@ -59,50 +69,100 @@ export const Cropper: React.FC = () => {
               )
               .withFaceLandmarks(true);
 
-            if (!detection) throw Error({ error: 'Face not detected' });
+            if (!detection) throw new Error('Face not detected');
 
-            const { landmarks } = detection;
-            const leftEye = landmarks.getLeftEye();
-            const rightEye = landmarks.getRightEye();
-            const jaw = landmarks.getJawOutline();
+            // 3️⃣ Ko‘zlar markazini aniqlaymiz
+            const leftEye = detection.landmarks.getLeftEye();
+            const rightEye = detection.landmarks.getRightEye();
 
-            const eyeCenterX = (leftEye[0].x + rightEye[3].x) / 2;
-            const eyeCenterY =
-              (leftEye.reduce((s, p) => s + p.y, 0) + rightEye.reduce((s, p) => s + p.y, 0)) /
-              (leftEye.length + rightEye.length);
+            const leftEyeCenter = {
+              x: leftEye.reduce((s, p) => s + p.x, 0) / leftEye.length,
+              y: leftEye.reduce((s, p) => s + p.y, 0) / leftEye.length,
+            };
+            const rightEyeCenter = {
+              x: rightEye.reduce((s, p) => s + p.x, 0) / rightEye.length,
+              y: rightEye.reduce((s, p) => s + p.y, 0) / rightEye.length,
+            };
 
-            const jawTop = Math.min(...jaw.map((p) => p.y));
-            const jawBottom = Math.max(...jaw.map((p) => p.y));
-            const faceHeight = jawBottom - jawTop;
+            // 4️⃣ Rasmni aylantirish
+            const dy = rightEyeCenter.y - leftEyeCenter.y;
+            const dx = rightEyeCenter.x - leftEyeCenter.x;
+            const angle = Math.atan2(dy, dx);
 
-            const scale = ((CANVAS_SIZE * DESIRED_FACE_RATIO) / faceHeight) * BASE_ZOOM;
-            const desiredEyeY = CANVAS_SIZE * DESIRED_EYE_Y_RATIO;
-            const dx = CANVAS_SIZE / 2 - eyeCenterX * scale;
-            const dy = desiredEyeY - eyeCenterY * scale - CANVAS_SIZE * TOP_MARGIN_RATIO;
+            const rotateCanvas = document.createElement('canvas');
+            const rctx = rotateCanvas.getContext('2d')!;
+            const biggerSize = Math.max(img.width, img.height) * 1.5;
+            rotateCanvas.width = biggerSize;
+            rotateCanvas.height = biggerSize;
 
-            const canvas = document.createElement('canvas');
-            canvas.width = CANVAS_SIZE;
-            canvas.height = CANVAS_SIZE;
-            const ctx = canvas.getContext('2d')!;
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-            ctx.drawImage(img, dx, dy, img.width * scale, img.height * scale);
+            rctx.translate(biggerSize / 2, biggerSize / 2);
+            rctx.rotate(-angle);
+            rctx.drawImage(img, -img.width / 2, -img.height / 2);
 
-            // Rasmdan so‘ng oqartirish effekti
-            ctx.drawImage(img, dx, dy, img.width * scale, img.height * scale);
-            const imageData = ctx.getImageData(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-            const data = imageData.data;
-            for (let i = 0; i < data.length; i += 4) {
-              data[i] = Math.min(data[i] + 15, 255); // R kanal
-              data[i + 1] = Math.min(data[i + 1] + 15, 255); // G kanal
-              data[i + 2] = Math.min(data[i + 2] + 15, 255); // B kanal
-            }
-            ctx.putImageData(imageData, 0, 0);
+            const rotatedImage = new Image();
+            rotatedImage.src = rotateCanvas.toDataURL();
 
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
-            resolve(dataUrl);
-          } catch {
-            reject();
+            rotatedImage.onload = async () => {
+              const detRotated = await faceapi
+                .detectSingleFace(
+                  rotatedImage,
+                  new faceapi.TinyFaceDetectorOptions({ inputSize: 512, scoreThreshold: 0.5 }),
+                )
+                .withFaceLandmarks(true);
+
+              if (!detRotated) {
+                console.warn('Face not found after rotation, using original');
+
+                return resolve(rotateCanvas.toDataURL('image/jpeg', 0.95));
+              }
+
+              const { landmarks } = detRotated;
+              const jaw = landmarks.getJawOutline();
+              const jawTop = Math.min(...jaw.map((p) => p.y));
+              const jawBottom = Math.max(...jaw.map((p) => p.y));
+              const faceHeight = jawBottom - jawTop;
+              const scale = ((CANVAS_SIZE * DESIRED_FACE_RATIO) / faceHeight) * BASE_ZOOM;
+
+              const leftEye2 = landmarks.getLeftEye();
+              const rightEye2 = landmarks.getRightEye();
+              const eyeCenterX = (leftEye2[0].x + rightEye2[3].x) / 2;
+              const eyeCenterY =
+                (leftEye2.reduce((s, p) => s + p.y, 0) + rightEye2.reduce((s, p) => s + p.y, 0)) /
+                (leftEye2.length + rightEye2.length);
+
+              const desiredEyeY = CANVAS_SIZE * DESIRED_EYE_Y_RATIO;
+              const dx2 = CANVAS_SIZE / 2 - eyeCenterX * scale;
+              const dy2 = desiredEyeY - eyeCenterY * scale - CANVAS_SIZE * TOP_MARGIN_RATIO;
+
+              const canvas = document.createElement('canvas');
+              canvas.width = CANVAS_SIZE;
+              canvas.height = CANVAS_SIZE;
+              const ctx = canvas.getContext('2d')!;
+              ctx.fillStyle = '#ffffff';
+              ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+              ctx.drawImage(
+                rotatedImage,
+                dx2,
+                dy2,
+                rotatedImage.width * scale,
+                rotatedImage.height * scale,
+              );
+
+              // Oqartirish effekti
+              const imageData = ctx.getImageData(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+              const data = imageData.data;
+              for (let i = 0; i < data.length; i += 4) {
+                data[i] = Math.min(data[i] + 15, 255);
+                data[i + 1] = Math.min(data[i + 1] + 15, 255);
+                data[i + 2] = Math.min(data[i + 2] + 15, 255);
+              }
+              ctx.putImageData(imageData, 0, 0);
+
+              const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+              resolve(dataUrl);
+            };
+          } catch (err) {
+            reject(err);
           }
         };
       }),
@@ -126,7 +186,7 @@ export const Cropper: React.FC = () => {
           const result = await cropSingleImage(file);
           if (result) processed.push({ id: crypto.randomUUID(), name: file.name, url: result });
         } catch {
-          setError(`Some pictures is not detected: ${file.name}`);
+          setError(`Some pictures could not be detected: ${file.name}`);
         }
       }
 
@@ -152,7 +212,7 @@ export const Cropper: React.FC = () => {
         className="w-full border border-white border-dashed rounded-2xl p-6 text-white cursor-pointer bg-white/10 hover:bg-white/20 transition"
       />
       <Loading loading={loading} />
-      <Error error={error} />
+      <ErrorBoundary error={error} />
       <ResultList results={results} />
     </div>
   );
