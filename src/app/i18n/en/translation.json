@@ -15,5 +15,16 @@
   "not-found": "Page not found",
   "page-not-found": "Oops! Page you looking for does not exists anymore!",
   "go-to-homepage": "Go to homepage",
-  "logout": "Logout"
+  "logout": "Logout",
+  "login-title": "Please log in to use this app",
+  "email": "Email",
+  "auth": {
+    "login": "Login",
+    "login-placeholder": "Write login here",
+    "password-placeholder": "Write password here",
+    "login-success": "Logged in successfully",
+    "login-error": "Error on logging in",
+    "login-failed": "Failed logging in ",
+    "password": "Password"
+  }
 }
