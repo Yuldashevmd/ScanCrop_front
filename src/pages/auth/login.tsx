@@ -1,23 +1,24 @@
 import { useLoginMutation } from 'entities/auth';
 import { useState } from 'react';
+import { useNavigate } from 'react-router';
 import { useLang } from 'shared/lib';
 
 export function Login() {
   const { t } = useLang();
   const [userLogin, setUserLogin] = useState('');
   const [userPassword, setUserPassword] = useState('');
+  const navigate = useNavigate();
 
   const [login, { isLoading, isError }] = useLoginMutation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('kirdi', userLogin);
 
     try {
       if (userLogin && userPassword) {
         const response = await login({ login: userLogin, password: userPassword }).unwrap();
         if (response) {
-          console.log(response);
+          navigate('/');
         }
       }
     } catch (err) {

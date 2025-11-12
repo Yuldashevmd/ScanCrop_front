@@ -15,11 +15,11 @@ const baseQuery = async (
   const rawResult = await fetchBaseQuery({
     baseUrl,
     prepareHeaders: (headers) => {
-      headers.set('credentials', 'include');
       headers.set('Content-Type', 'application/json');
 
       return headers;
     },
+    credentials: 'include',
   })(args, api, extraOptions ?? {});
 
   return rawResult;
