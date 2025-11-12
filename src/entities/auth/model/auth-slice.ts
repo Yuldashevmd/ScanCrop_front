@@ -20,6 +20,7 @@ export const authSlice = createSlice({
     });
     builder.addMatcher(authApi.endpoints.login.matchFulfilled, (state) => {
       state.isAuth = true;
+      state.loading = false;
     });
     // logout
     builder.addMatcher(authApi.endpoints.logout.matchPending, (state) => {

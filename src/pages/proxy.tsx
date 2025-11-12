@@ -4,7 +4,7 @@ import { Navigate } from 'react-router';
 export function Proxy({ children }: { children: React.ReactNode }) {
   const { data } = useGetMeQuery({});
 
-  if (!data?.isAuth) {
+  if (data?.isAuth === false) {
     return <Navigate to="/login" replace />;
   }
 
