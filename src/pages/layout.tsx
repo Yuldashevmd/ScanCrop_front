@@ -4,12 +4,11 @@ import { Proxy } from './proxy';
 
 export function Layout() {
   return (
-    <main>
+    <Proxy>
       <HeaderUI />
       <section className="max-w-[1080px] mx-auto px-2 xl:px-0">
         <Outlet />
       </section>
-      <Proxy />
-    </main>
+    </Proxy>
   );
 }

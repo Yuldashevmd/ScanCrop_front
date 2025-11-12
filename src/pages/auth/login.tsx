@@ -26,7 +26,7 @@ export function Login() {
   };
 
   return (
-    <div className="flex items-center justify-center h-[80dvh]">
+    <div className="flex items-center justify-center h-screen bg-gray-100">
       <div className="max-w-150 w-full min-h-fit px-8 py-6 mt-4 text-left bg-white border border-gray-300 rounded-lg">
         <h3 className="text-base sm:text-2xl font-bold text-center">{t('login-title')}</h3>
         <form id="login-form" onSubmit={handleSubmit} autoComplete="off" autoCorrect="off">

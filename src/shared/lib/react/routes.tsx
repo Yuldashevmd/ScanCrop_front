@@ -13,14 +13,14 @@ export const routes = createBrowserRouter([
         index: true,
         element: <Cropper />,
       },
-      {
-        path: '/login',
-        element: <Login />,
-      },
     ],
   },
   {
     path: '*',
     element: <NotfoundPage />,
+  },
+  {
+    path: 'login',
+    element: <Login />,
   },
 ]);

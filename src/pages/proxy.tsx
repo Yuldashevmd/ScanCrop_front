@@ -1,8 +1,12 @@
 import { useGetMeQuery } from 'entities/auth';
+import { Navigate } from 'react-router';
 
-export function Proxy() {
+export function Proxy({ children }: { children: React.ReactNode }) {
   const { data } = useGetMeQuery({});
-  console.log(data, 'data');
 
-  return null;
+  if (!data?.isAuth) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
 }
