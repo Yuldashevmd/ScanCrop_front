@@ -1,5 +1,9 @@
 {
   "send": "Yubormoq",
   "cancel": "Bekor qilmoq",
-  "back": "Ortga"
+  "back": "Ortga",
+  "loading": "Yuklanmoqda",
+  "download": "Yuklab olish",
+  "download-all": "Hammasini yuklab olish",
+  "login": "Tizimga kirish"
 }

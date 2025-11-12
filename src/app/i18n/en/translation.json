@@ -1,5 +1,9 @@
 {
   "send": "Send",
   "cancel": "Cancel",
-  "back": "Back"
+  "back": "Back",
+  "loading": "Loading",
+  "download": "Download",
+  "download-all": "Download all",
+  "login": "Login"
 }
