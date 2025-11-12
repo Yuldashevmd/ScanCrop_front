@@ -1,5 +1,5 @@
 import { useAuth, useLogoutMutation } from 'entities/auth';
-import { Link, useNavigate } from 'react-router';
+import { useNavigate } from 'react-router';
 import { useLang } from 'shared/lib';
 
 export function AuthProfile() {
@@ -34,10 +34,8 @@ export function AuthProfile() {
   }
 
   return (
-    <Link
-      to={'/login'}
-      className="min-w-[100px] from-[#245580] to-[#337ab7] bg-gradient-to-t px-3 py-1 rounded text-center cursor-pointer">
+    <button className="min-w-[100px] from-[#245580] to-[#337ab7] bg-gradient-to-t px-3 py-1 rounded text-center cursor-pointer">
       {t('login')}
-    </Link>
+    </button>
   );
 }
