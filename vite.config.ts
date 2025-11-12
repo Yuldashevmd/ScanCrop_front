@@ -16,4 +16,8 @@ export default defineConfig({
       pages: path.resolve(__dirname, 'src/pages'),
     },
   },
+  optimizeDeps: {
+    force: true,
+    include: ['@imgly/background-removal'],
+  },
 });
