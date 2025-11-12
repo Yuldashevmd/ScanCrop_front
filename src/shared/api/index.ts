@@ -4,7 +4,6 @@ import {
   type BaseQueryApi,
   type FetchArgs,
 } from '@reduxjs/toolkit/query/react';
-import { getLocalStorage } from 'shared/lib';
 
 const baseUrl = import.meta.env.VITE_APP_URL_DEV;
 
@@ -16,10 +15,8 @@ const baseQuery = async (
   const rawResult = await fetchBaseQuery({
     baseUrl,
     prepareHeaders: (headers) => {
-      const token = getLocalStorage('access_token');
-      if (token) {
-        headers.set('authorization', `Bearer ${token}`);
-      }
+      headers.set('credentials', 'include');
+      headers.set('Content-Type', 'application/json');
 
       return headers;
     },

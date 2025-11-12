@@ -8,7 +8,8 @@ export const createStore = (options?: ConfigureStoreOptions['preloadedState'] | 
       [baseApi.reducerPath]: baseApi.reducer,
       authSlice: authSlice.reducer,
     },
-    middleware: (getDefaultMiddleware) => getDefaultMiddleware(),
+    middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(baseApi.middleware),
+    devTools: true,
     ...options,
   });
 
