@@ -14,5 +14,6 @@
   "images": "Images",
   "not-found": "Page not found",
   "page-not-found": "Oops! Page you looking for does not exists anymore!",
-  "go-to-homepage": "Go to homepage"
+  "go-to-homepage": "Go to homepage",
+  "logout": "Logout"
 }

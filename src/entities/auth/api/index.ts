@@ -10,7 +10,21 @@ export const authApi = baseApi.injectEndpoints({
         body,
       }),
     }),
+
+    logout: build.mutation({
+      query: () => ({
+        url: API_MAP.LOGOUT,
+        method: API_METHODS.POST,
+      }),
+    }),
+
+    getMe: build.query({
+      query: () => ({
+        url: API_MAP.GET_ME,
+        method: API_METHODS.GET,
+      }),
+    }),
   }),
 });
 
-export const { useLoginMutation } = authApi;
+export const { useLoginMutation, useLogoutMutation, useGetMeQuery } = authApi;
