@@ -3,6 +3,8 @@ import * as faceapi from 'face-api.js';
 import { Loading } from './loading';
 import { ErrorBoundary } from './error';
 import { ResultList } from './result-list';
+import { removeBackground } from '@imgly/background-removal'; // professional AI fon o‘chirish
+import { useLang } from 'shared/lib';
 
 const CANVAS_SIZE = 600;
 const DESIRED_EYE_Y_RATIO = 0.58;
@@ -17,10 +19,13 @@ export interface CroppedResult {
 }
 
 export const Cropper: React.FC = () => {
+  const { t } = useLang();
+
   const [results, setResults] = useState<CroppedResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [modelsLoaded, setModelsLoaded] = useState(false);
+  const [whiteBg, setWhiteBg] = useState(false);
 
   // === MODELLARNI YUKLASH ===
   const loadModels = useCallback(async () => {
@@ -40,6 +45,32 @@ export const Cropper: React.FC = () => {
     loadModels();
   }, [loadModels]);
 
+  // === OQ FON QILISH FUNKSIYASI ===
+  const applyWhiteBackground = async (dataUrl: string): Promise<string> => {
+    // 1️⃣ dataUrl → Blob → File
+    const blob = await (await fetch(dataUrl)).blob();
+    const file = new File([blob], 'image.jpg', { type: blob.type });
+
+    // 2️⃣ AI orqali fonni olib tashlaymiz
+    const resultBlob = await removeBackground(file, {
+      output: { format: 'image/png', quality: 1 },
+    });
+
+    // 3️⃣ PNG (transparent) → oq fon bilan birlashtiramiz
+    const img = await createImageBitmap(resultBlob);
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#ffffff'; // oq fon
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0);
+
+    // 4️⃣ Yakuniy oq fonli rasmni qaytaramiz
+    return canvas.toDataURL('image/jpeg', 0.95);
+  };
+
   // === YAKKA RASMNI CROP QILISH FUNKSIYASI ===
   const cropSingleImage = useCallback(
     (file: File): Promise<string | null> =>
@@ -52,16 +83,6 @@ export const Cropper: React.FC = () => {
 
         img.onload = async () => {
           try {
-            // 🟢 1️⃣ Rasm 5:5 (ya’ni 1:1) formatda ekanligini tekshiramiz
-            const aspectRatio = img.width / img.height;
-            if (Math.abs(aspectRatio - 1) < 0.02) {
-              // Faqat xabar chiqadi, natijaga qo‘shilmaydi
-              setError(`${file.name} rasm 5:5 o‘lchamda, crop qilinmaydi.`);
-
-              return resolve(null);
-            }
-
-            // 2️⃣ Yuzni aniqlaymiz
             const detection = await faceapi
               .detectSingleFace(
                 img,
@@ -71,7 +92,6 @@ export const Cropper: React.FC = () => {
 
             if (!detection) throw new Error('Face not detected');
 
-            // 3️⃣ Ko‘zlar markazini aniqlaymiz
             const leftEye = detection.landmarks.getLeftEye();
             const rightEye = detection.landmarks.getRightEye();
 
@@ -84,7 +104,6 @@ export const Cropper: React.FC = () => {
               y: rightEye.reduce((s, p) => s + p.y, 0) / rightEye.length,
             };
 
-            // 4️⃣ Rasmni aylantirish
             const dy = rightEyeCenter.y - leftEyeCenter.y;
             const dx = rightEyeCenter.x - leftEyeCenter.x;
             const angle = Math.atan2(dy, dx);
@@ -110,11 +129,7 @@ export const Cropper: React.FC = () => {
                 )
                 .withFaceLandmarks(true);
 
-              if (!detRotated) {
-                console.warn('Face not found after rotation, using original');
-
-                return resolve(rotateCanvas.toDataURL('image/jpeg', 0.95));
-              }
+              if (!detRotated) return resolve(rotateCanvas.toDataURL('image/jpeg', 0.95));
 
               const { landmarks } = detRotated;
               const jaw = landmarks.getJawOutline();
@@ -148,17 +163,17 @@ export const Cropper: React.FC = () => {
                 rotatedImage.height * scale,
               );
 
-              // Oqartirish effekti
-              const imageData = ctx.getImageData(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-              const data = imageData.data;
-              for (let i = 0; i < data.length; i += 4) {
-                data[i] = Math.min(data[i] + 15, 255);
-                data[i + 1] = Math.min(data[i + 1] + 15, 255);
-                data[i + 2] = Math.min(data[i + 2] + 15, 255);
-              }
-              ctx.putImageData(imageData, 0, 0);
+              let dataUrl = canvas.toDataURL('image/jpeg', 0.95);
 
-              const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+              // 🔹 agar checkbox tanlangan bo‘lsa — fonni AI orqali oq qilamiz
+              if (whiteBg) {
+                try {
+                  dataUrl = await applyWhiteBackground(dataUrl);
+                } catch (err) {
+                  console.warn('White background removal failed', err);
+                }
+              }
+
               resolve(dataUrl);
             };
           } catch (err) {
@@ -166,7 +181,7 @@ export const Cropper: React.FC = () => {
           }
         };
       }),
-    [modelsLoaded],
+    [modelsLoaded, whiteBg],
   );
 
   // === BIR NECHTA RASMNI BIRMA-BIR CROP QILISH ===
@@ -200,31 +215,37 @@ export const Cropper: React.FC = () => {
   return (
     <div>
       <div className="mx-[10px] md:mx-[40px] mt-[2.5rem] mb-[1.5rem] text-black text-center space-y-1">
-        <h3 className=" text-[24px]">Upload photo to crop</h3>
-        <p className="text-sm sm:text-base">Your data not saved on platforms to provide privacy</p>
+        <h3 className=" text-[24px]">{t('crop-title')}</h3>
+        <p className="text-sm sm:text-base">{t('crop-desc')}</p>
       </div>
       <hr className="text-gray-200 my-3" />
 
-      <div className="flex justify-center">
+      <div className="flex justify-center gap-3 items-center">
         <label
           htmlFor="upload"
-          className="cursor-pointer w-full border border-gray-300 px-[12px] py-[6px] min-h-[38px] rounded">
-          Click to upload images
+          className="cursor-pointer w-full border border-gray-300 px-[12px] py-[6px] min-h-[38px] rounded text-center">
+          {t('upload')}
         </label>
         <input
+          disabled={loading}
           id="upload"
           type="file"
           accept="image/*"
           multiple
           onChange={handleFiles}
-          placeholder="Please upload images"
           className="hidden"
         />
+
+        {/* 🔹 White Background Checkbox */}
       </div>
+      <label className="flex items-center space-x-2 mt-1">
+        <input type="checkbox" checked={whiteBg} onChange={(e) => setWhiteBg(e.target.checked)} />
+        <span className="text-base font-semibold">{t('white-bg')}</span>
+      </label>
 
       <div className="border border-gray-300 rounded my-4">
         <div className="h-[45px] from-gray-[#f5f5f5] to-[#e8e8e8] bg-gradient-to-b p-4 flex items-center text-gray-800">
-          Images
+          {t('images')}
         </div>
         <div className="px-6 py-4">
           <Loading loading={loading} />

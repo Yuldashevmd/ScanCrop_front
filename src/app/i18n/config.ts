@@ -3,7 +3,6 @@ import { initReactI18next } from 'react-i18next';
 
 import ru from './ru/translation.json';
 import uz from './uz/translation.json';
-import cy from './cy/translation.json';
 import en from './en/translation.json';
 
 i18next.use(initReactI18next).init({
@@ -15,9 +14,6 @@ i18next.use(initReactI18next).init({
     },
     uz: {
       translation: uz,
-    },
-    cy: {
-      translation: cy,
     },
     en: {
       translation: en,

@@ -1,6 +1,6 @@
 import { DownloadImages } from 'features/download-images';
 import { type CroppedResult } from './index';
-import { useDisclosure } from 'shared/lib';
+import { useDisclosure, useLang } from 'shared/lib';
 import { useState } from 'react';
 
 export function ResultList({ results }: { results: CroppedResult[] }) {
@@ -52,6 +52,7 @@ declare global {
 }
 
 export function SingleDownload({ r }: { r: CroppedResult }) {
+  const { t } = useLang();
   const handleSave = async () => {
     try {
       const response = await fetch(r.url);
@@ -90,7 +91,7 @@ export function SingleDownload({ r }: { r: CroppedResult }) {
     <button
       onClick={handleSave}
       className="from-[#245580] to-[#337ab7] bg-gradient-to-t px-3 py-1 rounded text-center cursor-pointer w-full min-h-[38px] text-white">
-      Save As
+      {t('download')}
     </button>
   );
 }

@@ -1,5 +1,30 @@
 {
   "send": "Yubormoq",
   "cancel": "Bekor qilmoq",
-  "back": "Ortga"
+  "back": "Ortga",
+  "loading": "Yuklanmoqda",
+  "download": "Yuklab olish",
+  "download-all": "Hammasini yuklab olish",
+  "login": "Tizimga kirish",
+  "app-name": "Fotosuratlar",
+  "crop-title": "Fotosuratlar DV2027 dasturi uchun",
+  "crop-desc": "Sizning shaxsiy hayotingizni saqlab qolish uchun fotosuratlar saqlanmaydi",
+  "upload": "Rasmlarni yuklash",
+  "white-bg": "Oq fonni qo'llang (AI)",
+  "images": "Rasmlar",
+  "not-found": "Sahifa topilmadi",
+  "page-not-found": "Oops! \nSiz qidirayotgan sahifa endi mavjud emas!",
+  "go-to-homepage": "Bosh sahifaga o'ting",
+  "logout": "Chiqish",
+  "login-title": "Iltimos, ushbu ilovadan foydalanish uchun tizimga kiring",
+  "email": "Elektron pochta",
+  "auth": {
+    "login": "Login",
+    "login-placeholder": "Bu yerni yozish",
+    "password-placeholder": "Parolni bu erda yozing",
+    "login-success": "Muvaffaqiyatli tizimga kirdi",
+    "login-error": "Tizimga kirish xatosi",
+    "login-failed": "Muvaffaqiyatsiz qaydlar",
+    "password": "Parol"
+  }
 }

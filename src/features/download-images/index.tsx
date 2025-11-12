@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
+import { useLang } from 'shared/lib';
 
 type CroppedResult = {
   id: string;
@@ -19,6 +20,8 @@ declare global {
 }
 
 export function DownloadImages({ results }: IProps) {
+  const { t } = useLang();
+
   const downloadAll = useCallback(async () => {
     try {
       // Zip yaratish
@@ -60,7 +63,7 @@ export function DownloadImages({ results }: IProps) {
       <button
         onClick={downloadAll}
         className="from-[#245580] to-[#337ab7] bg-gradient-to-t px-3 py-1 rounded text-center cursor-pointer w-full min-h-[38px] text-white">
-        Download all photos (zip)
+        {t('download-all')}
       </button>
     </div>
   );
