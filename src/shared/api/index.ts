@@ -11,7 +11,7 @@ const baseUrl = import.meta.env.VITE_APP_URL_DEV;
 const baseQuery = async (
   args: string | FetchArgs,
   api: BaseQueryApi,
-  extraOptions: Record<string, unknown>,
+  extraOptions?: Record<string, unknown>,
 ) => {
   const rawResult = await fetchBaseQuery({
     baseUrl,
@@ -20,9 +20,10 @@ const baseQuery = async (
       if (token) {
         headers.set('authorization', `Bearer ${token}`);
       }
+
       return headers;
     },
-  })(args, api, extraOptions);
+  })(args, api, extraOptions ?? {});
 
   return rawResult;
 };

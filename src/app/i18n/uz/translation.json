@@ -11,5 +11,8 @@
   "crop-desc": "Sizning shaxsiy hayotingizni saqlab qolish uchun fotosuratlar saqlanmaydi",
   "upload": "Rasmlarni yuklash",
   "white-bg": "Oq fonni qo'llang (AI)",
-  "images": "Rasmlar"
+  "images": "Rasmlar",
+  "not-found": "Sahifa topilmadi",
+  "page-not-found": "Oops! \nSiz qidirayotgan sahifa endi mavjud emas!",
+  "go-to-homepage": "Bosh sahifaga o'ting"
 }

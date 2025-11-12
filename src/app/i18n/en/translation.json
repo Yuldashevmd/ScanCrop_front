@@ -11,5 +11,8 @@
   "crop-desc": "Photos will not be saved, to maintain your privacy",
   "upload": "Upload photos",
   "white-bg": "Apply white background (AI)",
-  "images": "Images"
+  "images": "Images",
+  "not-found": "Page not found",
+  "page-not-found": "Oops! Page you looking for does not exists anymore!",
+  "go-to-homepage": "Go to homepage"
 }
