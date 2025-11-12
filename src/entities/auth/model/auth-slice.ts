@@ -3,7 +3,7 @@ import { authApi } from '../api';
 
 const initialState = {
   isAuth: false,
-  loading: false,
+  loading: true,
 };
 
 export const authSlice = createSlice({
@@ -39,8 +39,8 @@ export const authSlice = createSlice({
     builder.addMatcher(authApi.endpoints.getMe.matchRejected, (state) => {
       state.loading = false;
     });
-    builder.addMatcher(authApi.endpoints.getMe.matchFulfilled, (state) => {
-      state.isAuth = true;
+    builder.addMatcher(authApi.endpoints.getMe.matchFulfilled, (state, action) => {
+      state.isAuth = action.payload.isAuth;
       state.loading = false;
     });
   },
