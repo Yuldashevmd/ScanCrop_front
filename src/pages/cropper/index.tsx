@@ -4,6 +4,7 @@ import { Loading } from './loading';
 import { ErrorBoundary } from './error';
 import { ResultList } from './result-list';
 import { removeBackground } from '@imgly/background-removal'; // professional AI fon o‘chirish
+import { useLang } from 'shared/lib';
 
 const CANVAS_SIZE = 600;
 const DESIRED_EYE_Y_RATIO = 0.58;
@@ -18,6 +19,8 @@ export interface CroppedResult {
 }
 
 export const Cropper: React.FC = () => {
+  const { t } = useLang();
+
   const [results, setResults] = useState<CroppedResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -212,8 +215,8 @@ export const Cropper: React.FC = () => {
   return (
     <div>
       <div className="mx-[10px] md:mx-[40px] mt-[2.5rem] mb-[1.5rem] text-black text-center space-y-1">
-        <h3 className=" text-[24px]">Upload photo to crop</h3>
-        <p className="text-sm sm:text-base">Your data not saved on platforms to provide privacy</p>
+        <h3 className=" text-[24px]">{t('crop-title')}</h3>
+        <p className="text-sm sm:text-base">{t('crop-desc')}</p>
       </div>
       <hr className="text-gray-200 my-3" />
 
@@ -221,9 +224,10 @@ export const Cropper: React.FC = () => {
         <label
           htmlFor="upload"
           className="cursor-pointer w-full border border-gray-300 px-[12px] py-[6px] min-h-[38px] rounded text-center">
-          Click to upload images
+          {t('upload')}
         </label>
         <input
+          disabled={loading}
           id="upload"
           type="file"
           accept="image/*"
@@ -236,12 +240,12 @@ export const Cropper: React.FC = () => {
       </div>
       <label className="flex items-center space-x-2 mt-1">
         <input type="checkbox" checked={whiteBg} onChange={(e) => setWhiteBg(e.target.checked)} />
-        <span className="text-base font-semibold">Apply white background (AI)</span>
+        <span className="text-base font-semibold">{t('white-bg')}</span>
       </label>
 
       <div className="border border-gray-300 rounded my-4">
         <div className="h-[45px] from-gray-[#f5f5f5] to-[#e8e8e8] bg-gradient-to-b p-4 flex items-center text-gray-800">
-          Images
+          {t('images')}
         </div>
         <div className="px-6 py-4">
           <Loading loading={loading} />

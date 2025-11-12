@@ -5,5 +5,11 @@
   "loading": "Loading",
   "download": "Download",
   "download-all": "Download all",
-  "login": "Login"
+  "login": "Login",
+  "app-name": "Photo maker ",
+  "crop-title": "Photo maker for DV2027 program",
+  "crop-desc": "Photos will not be saved, to maintain your privacy",
+  "upload": "Upload photos",
+  "white-bg": "Apply white background (AI)",
+  "images": "Images"
 }

@@ -5,5 +5,11 @@
   "loading": "Yuklanmoqda",
   "download": "Yuklab olish",
   "download-all": "Hammasini yuklab olish",
-  "login": "Tizimga kirish"
+  "login": "Tizimga kirish",
+  "app-name": "Fotosuratlar",
+  "crop-title": "Fotosuratlar DV2027 dasturi uchun",
+  "crop-desc": "Sizning shaxsiy hayotingizni saqlab qolish uchun fotosuratlar saqlanmaydi",
+  "upload": "Rasmlarni yuklash",
+  "white-bg": "Oq fonni qo'llang (AI)",
+  "images": "Rasmlar"
 }

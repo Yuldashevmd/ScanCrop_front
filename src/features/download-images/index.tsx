@@ -63,7 +63,7 @@ export function DownloadImages({ results }: IProps) {
       <button
         onClick={downloadAll}
         className="from-[#245580] to-[#337ab7] bg-gradient-to-t px-3 py-1 rounded text-center cursor-pointer w-full min-h-[38px] text-white">
-        {t('download_all')}
+        {t('download-all')}
       </button>
     </div>
   );
