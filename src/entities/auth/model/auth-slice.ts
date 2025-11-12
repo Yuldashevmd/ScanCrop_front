@@ -3,7 +3,7 @@ import { authApi } from '../api';
 
 const initialState = {
   isAuth: false,
-  loading: true,
+  loading: false,
 };
 
 export const authSlice = createSlice({
