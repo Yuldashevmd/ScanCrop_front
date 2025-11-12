@@ -22,7 +22,7 @@ export const Cropper: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [modelsLoaded, setModelsLoaded] = useState(false);
-  const [whiteBg, setWhiteBg] = useState(false); // 🔹 checkbox uchun state
+  const [whiteBg, setWhiteBg] = useState(false);
 
   // === MODELLARNI YUKLASH ===
   const loadModels = useCallback(async () => {
@@ -50,7 +50,7 @@ export const Cropper: React.FC = () => {
 
     // 2️⃣ AI orqali fonni olib tashlaymiz
     const resultBlob = await removeBackground(file, {
-      output: { format: 'image/png', quality: 1 }, // Transparent PNG chiqadi
+      output: { format: 'image/png', quality: 1 },
     });
 
     // 3️⃣ PNG (transparent) → oq fon bilan birlashtiramiz
@@ -233,11 +233,11 @@ export const Cropper: React.FC = () => {
         />
 
         {/* 🔹 White Background Checkbox */}
-        <label className="flex items-center space-x-2">
-          <input type="checkbox" checked={whiteBg} onChange={(e) => setWhiteBg(e.target.checked)} />
-          <span className="text-sm">Apply white background (AI)</span>
-        </label>
       </div>
+      <label className="flex items-center space-x-2 mt-1">
+        <input type="checkbox" checked={whiteBg} onChange={(e) => setWhiteBg(e.target.checked)} />
+        <span className="text-base font-semibold">Apply white background (AI)</span>
+      </label>
 
       <div className="border border-gray-300 rounded my-4">
         <div className="h-[45px] from-gray-[#f5f5f5] to-[#e8e8e8] bg-gradient-to-b p-4 flex items-center text-gray-800">
