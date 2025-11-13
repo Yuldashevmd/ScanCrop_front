@@ -26,5 +26,6 @@
     "login-error": "Error on logging in",
     "login-failed": "Failed logging in ",
     "password": "Password"
-  }
+  },
+  "takes-a-time": "Takes a time"
 }
