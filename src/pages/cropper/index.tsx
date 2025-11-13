@@ -1,16 +1,19 @@
-import React, { useState, useEffect, useCallback, type ChangeEvent } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import * as faceapi from 'face-api.js';
 import { Loading } from './loading';
 import { ErrorBoundary } from './error';
 import { ResultList } from './result-list';
-import { removeBackground } from '@imgly/background-removal'; // professional AI fon o‘chirish
 import { useLang } from 'shared/lib';
 
 const CANVAS_SIZE = 600;
+const FACE_DETECT_SIZE = 360; // detect uchun kichik o'lcham — tezlik uchun
 const DESIRED_EYE_Y_RATIO = 0.58;
 const DESIRED_FACE_RATIO = 0.65;
 const TOP_MARGIN_RATIO = 0.2;
 const BASE_ZOOM = 0.45;
+
+// concurrency limit (necha rasm parallel ishlansin)
+const DEFAULT_CONCURRENCY = 3;
 
 export interface CroppedResult {
   id: string;
@@ -27,7 +30,7 @@ export const Cropper: React.FC = () => {
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [whiteBg, setWhiteBg] = useState(false);
 
-  // === MODELLARNI YUKLASH ===
+  // ---------- Load face-api models ----------
   const loadModels = useCallback(async () => {
     try {
       const CDN = 'https://justadudewhohacks.github.io/face-api.js/models/';
@@ -36,7 +39,9 @@ export const Cropper: React.FC = () => {
         faceapi.nets.faceLandmark68TinyNet.loadFromUri(CDN),
       ]);
       setModelsLoaded(true);
-    } catch {
+      setError(null);
+    } catch (err) {
+      console.error('Model load failed:', err);
       setError('Face detection model failed to load.');
     }
   }, []);
@@ -45,148 +50,241 @@ export const Cropper: React.FC = () => {
     loadModels();
   }, [loadModels]);
 
-  // === OQ FON QILISH FUNKSIYASI ===
-  const applyWhiteBackground = async (dataUrl: string): Promise<string> => {
-    // 1️⃣ dataUrl → Blob → File
-    const blob = await (await fetch(dataUrl)).blob();
-    const file = new File([blob], 'image.jpg', { type: blob.type });
+  // ---------- applyWhiteBackground (dynamic import, memoized) ----------
+  const applyWhiteBackground = useCallback(
+    async (dataUrl: string): Promise<string> => {
+      // Agar checkbox o‘chirilgan bo‘lsa — darhol qayt
+      if (!whiteBg) return dataUrl;
 
-    // 2️⃣ AI orqali fonni olib tashlaymiz
-    const resultBlob = await removeBackground(file, {
-      output: { format: 'image/png', quality: 1 },
-    });
+      // dynamic import — WASM faqat kerak bo‘lganda yuklanadi
+      const { removeBackground } = await import('@imgly/background-removal');
 
-    // 3️⃣ PNG (transparent) → oq fon bilan birlashtiramiz
-    const img = await createImageBitmap(resultBlob);
-    const canvas = document.createElement('canvas');
-    canvas.width = img.width;
-    canvas.height = img.height;
+      const blob = await (await fetch(dataUrl)).blob();
+      const file = new File([blob], 'image.jpg', { type: blob.type });
 
-    const ctx = canvas.getContext('2d')!;
-    ctx.fillStyle = '#ffffff'; // oq fon
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, 0, 0);
+      const result = await removeBackground(file, {
+        output: { format: 'image/png', quality: 1 },
+      });
 
-    // 4️⃣ Yakuniy oq fonli rasmni qaytaramiz
-    return canvas.toDataURL('image/jpeg', 0.95);
-  };
+      // createImageBitmap bilan ishlash (GPU-accel bo‘lishi mumkin)
+      const imgBitmap = await createImageBitmap(result);
 
-  // === YAKKA RASMNI CROP QILISH FUNKSIYASI ===
-  const cropSingleImage = useCallback(
-    (file: File): Promise<string | null> =>
-      new Promise((resolve, reject) => {
-        if (!modelsLoaded) return reject('Models not loaded yet.');
+      const canvas = document.createElement('canvas');
+      canvas.width = imgBitmap.width;
+      canvas.height = imgBitmap.height;
+      const ctx = canvas.getContext('2d')!;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(imgBitmap, 0, 0);
 
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.src = URL.createObjectURL(file);
-
-        img.onload = async () => {
-          try {
-            const detection = await faceapi
-              .detectSingleFace(
-                img,
-                new faceapi.TinyFaceDetectorOptions({ inputSize: 512, scoreThreshold: 0.5 }),
-              )
-              .withFaceLandmarks(true);
-
-            if (!detection) throw new Error('Face not detected');
-
-            const leftEye = detection.landmarks.getLeftEye();
-            const rightEye = detection.landmarks.getRightEye();
-
-            const leftEyeCenter = {
-              x: leftEye.reduce((s, p) => s + p.x, 0) / leftEye.length,
-              y: leftEye.reduce((s, p) => s + p.y, 0) / leftEye.length,
-            };
-            const rightEyeCenter = {
-              x: rightEye.reduce((s, p) => s + p.x, 0) / rightEye.length,
-              y: rightEye.reduce((s, p) => s + p.y, 0) / rightEye.length,
-            };
-
-            const dy = rightEyeCenter.y - leftEyeCenter.y;
-            const dx = rightEyeCenter.x - leftEyeCenter.x;
-            const angle = Math.atan2(dy, dx);
-
-            const rotateCanvas = document.createElement('canvas');
-            const rctx = rotateCanvas.getContext('2d')!;
-            const biggerSize = Math.max(img.width, img.height) * 1.5;
-            rotateCanvas.width = biggerSize;
-            rotateCanvas.height = biggerSize;
-
-            rctx.translate(biggerSize / 2, biggerSize / 2);
-            rctx.rotate(-angle);
-            rctx.drawImage(img, -img.width / 2, -img.height / 2);
-
-            const rotatedImage = new Image();
-            rotatedImage.src = rotateCanvas.toDataURL();
-
-            rotatedImage.onload = async () => {
-              const detRotated = await faceapi
-                .detectSingleFace(
-                  rotatedImage,
-                  new faceapi.TinyFaceDetectorOptions({ inputSize: 512, scoreThreshold: 0.5 }),
-                )
-                .withFaceLandmarks(true);
-
-              if (!detRotated) return resolve(rotateCanvas.toDataURL('image/jpeg', 0.95));
-
-              const { landmarks } = detRotated;
-              const jaw = landmarks.getJawOutline();
-              const jawTop = Math.min(...jaw.map((p) => p.y));
-              const jawBottom = Math.max(...jaw.map((p) => p.y));
-              const faceHeight = jawBottom - jawTop;
-              const scale = ((CANVAS_SIZE * DESIRED_FACE_RATIO) / faceHeight) * BASE_ZOOM;
-
-              const leftEye2 = landmarks.getLeftEye();
-              const rightEye2 = landmarks.getRightEye();
-              const eyeCenterX = (leftEye2[0].x + rightEye2[3].x) / 2;
-              const eyeCenterY =
-                (leftEye2.reduce((s, p) => s + p.y, 0) + rightEye2.reduce((s, p) => s + p.y, 0)) /
-                (leftEye2.length + rightEye2.length);
-
-              const desiredEyeY = CANVAS_SIZE * DESIRED_EYE_Y_RATIO;
-              const dx2 = CANVAS_SIZE / 2 - eyeCenterX * scale;
-              const dy2 = desiredEyeY - eyeCenterY * scale - CANVAS_SIZE * TOP_MARGIN_RATIO;
-
-              const canvas = document.createElement('canvas');
-              canvas.width = CANVAS_SIZE;
-              canvas.height = CANVAS_SIZE;
-              const ctx = canvas.getContext('2d')!;
-              ctx.fillStyle = '#ffffff';
-              ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-              ctx.drawImage(
-                rotatedImage,
-                dx2,
-                dy2,
-                rotatedImage.width * scale,
-                rotatedImage.height * scale,
-              );
-
-              let dataUrl = canvas.toDataURL('image/jpeg', 0.95);
-
-              // 🔹 agar checkbox tanlangan bo‘lsa — fonni AI orqali oq qilamiz
-              if (whiteBg) {
-                try {
-                  dataUrl = await applyWhiteBackground(dataUrl);
-                } catch (err) {
-                  console.warn('White background removal failed', err);
-                }
-              }
-
-              resolve(dataUrl);
-            };
-          } catch (err) {
-            reject(err);
-          }
-        };
-      }),
-    [modelsLoaded, whiteBg],
+      return canvas.toDataURL('image/jpeg', 0.95);
+    },
+    [whiteBg],
   );
 
-  // === BIR NECHTA RASMNI BIRMA-BIR CROP QILISH ===
+  // ---------- helper: safe load of image (createImageBitmap fallback) ----------
+  const loadImageBitmapOrElement = useCallback(async (file: File) => {
+    const objectUrl = URL.createObjectURL(file);
+    try {
+      const blob = await fetch(objectUrl).then((r) => r.blob());
+      // createImageBitmap may be faster (decoding off-main-thread on supporting browsers)
+      const bitmap = await createImageBitmap(blob);
+      URL.revokeObjectURL(objectUrl);
+
+      return { img: bitmap as ImageBitmap, cleanup: () => {} };
+    } catch {
+      // fallback to HTMLImageElement
+      return await new Promise<{ img: HTMLImageElement; cleanup: () => void }>(
+        (resolve, reject) => {
+          const imgEl = new Image();
+          imgEl.crossOrigin = 'anonymous';
+          imgEl.onload = () => {
+            URL.revokeObjectURL(objectUrl);
+            resolve({ img: imgEl, cleanup: () => {} });
+          };
+          imgEl.onerror = (e) => {
+            URL.revokeObjectURL(objectUrl);
+            reject(e);
+          };
+          imgEl.src = objectUrl;
+        },
+      );
+    }
+  }, []);
+
+  // ---------- main crop function ----------
+  const cropSingleImage = useCallback(
+    async (file: File): Promise<string> => {
+      if (!modelsLoaded) throw new Error('Models not loaded');
+
+      // 1) load image (bitmap or element)
+      const { img } = await loadImageBitmapOrElement(file);
+      const imgWidth = (img as any).width;
+      const imgHeight = (img as any).height;
+
+      if (!imgWidth || !imgHeight) throw new Error('Invalid image dimensions');
+
+      // 2) detect on small canvas (fast)
+      const detectCanvas = document.createElement('canvas');
+      detectCanvas.width = FACE_DETECT_SIZE;
+      detectCanvas.height = Math.max(1, Math.round((imgHeight / imgWidth) * FACE_DETECT_SIZE));
+      const dctx = detectCanvas.getContext('2d')!;
+      dctx.drawImage(img as any, 0, 0, detectCanvas.width, detectCanvas.height);
+
+      const detection = await faceapi
+        .detectSingleFace(
+          detectCanvas,
+          new faceapi.TinyFaceDetectorOptions({ inputSize: 256, scoreThreshold: 0.5 }),
+        )
+        .withFaceLandmarks(true);
+
+      if (!detection) throw new Error('Face not detected');
+
+      // 3) map detection landmarks to ORIGINAL coordinates
+      const scaleX = imgWidth / detectCanvas.width;
+      const scaleY = imgHeight / detectCanvas.height;
+
+      // faceapi Landmark positions array
+      const origLandmarks = detection.landmarks.positions.map((p) => ({
+        x: p.x * scaleX,
+        y: p.y * scaleY,
+      }));
+
+      // 4) compute eye centers (original coords) and angle
+      const leftEyePts = origLandmarks.slice(36, 42);
+      const rightEyePts = origLandmarks.slice(42, 48);
+
+      const leftEyeCenter = {
+        x: leftEyePts.reduce((s, p) => s + p.x, 0) / leftEyePts.length,
+        y: leftEyePts.reduce((s, p) => s + p.y, 0) / leftEyePts.length,
+      };
+      const rightEyeCenter = {
+        x: rightEyePts.reduce((s, p) => s + p.x, 0) / rightEyePts.length,
+        y: rightEyePts.reduce((s, p) => s + p.y, 0) / rightEyePts.length,
+      };
+
+      const dy = rightEyeCenter.y - leftEyeCenter.y;
+      const dx = rightEyeCenter.x - leftEyeCenter.x;
+      const angle = Math.atan2(dy, dx); // radians
+
+      // 5) rotate original image into a square canvas that fits rotated image
+      const diagonal = Math.ceil(Math.hypot(imgWidth, imgHeight));
+      const rotateCanvas = document.createElement('canvas');
+      rotateCanvas.width = diagonal;
+      rotateCanvas.height = diagonal;
+      const rctx = rotateCanvas.getContext('2d')!;
+      rctx.translate(diagonal / 2, diagonal / 2);
+      rctx.rotate(-angle); // rotate opposite to align eyes horizontally
+      rctx.drawImage(img as any, -imgWidth / 2, -imgHeight / 2);
+
+      // 6) transform original landmarks coordinates into rotated canvas coordinates
+      const cx = imgWidth / 2;
+      const cy = imgHeight / 2;
+      const rCx = diagonal / 2;
+      const rCy = diagonal / 2;
+      const cosA = Math.cos(-angle);
+      const sinA = Math.sin(-angle);
+
+      const rotatedLandmarks = origLandmarks.map((p) => {
+        const relX = p.x - cx;
+        const relY = p.y - cy;
+        const rx = cosA * relX - sinA * relY + rCx;
+        const ry = sinA * relX + cosA * relY + rCy;
+
+        return { x: rx, y: ry };
+      });
+
+      // 7) compute jaw/top/bottom & scale based on rotated landmarks (jaw indices 0..16)
+      const jaw = rotatedLandmarks.slice(0, 17);
+      const jawTop = Math.min(...jaw.map((p) => p.y));
+      const jawBottom = Math.max(...jaw.map((p) => p.y));
+      const faceHeight = jawBottom - jawTop;
+      if (!faceHeight || !isFinite(faceHeight)) throw new Error('Invalid face geometry');
+
+      const scale = ((CANVAS_SIZE * DESIRED_FACE_RATIO) / faceHeight) * BASE_ZOOM;
+
+      // rotated eyes centers
+      const leftEyeRot = rotatedLandmarks.slice(36, 42);
+      const rightEyeRot = rotatedLandmarks.slice(42, 48);
+      const eyeCenterX =
+        (leftEyeRot.reduce((s, p) => s + p.x, 0) + rightEyeRot.reduce((s, p) => s + p.x, 0)) /
+        (leftEyeRot.length + rightEyeRot.length);
+      const eyeCenterY =
+        (leftEyeRot.reduce((s, p) => s + p.y, 0) + rightEyeRot.reduce((s, p) => s + p.y, 0)) /
+        (leftEyeRot.length + rightEyeRot.length);
+
+      const desiredEyeY = CANVAS_SIZE * DESIRED_EYE_Y_RATIO;
+
+      const dxFinal = CANVAS_SIZE / 2 - eyeCenterX * scale;
+      const dyFinal = desiredEyeY - eyeCenterY * scale - CANVAS_SIZE * TOP_MARGIN_RATIO;
+
+      // 8) final canvas — draw rotatedCanvas (high-res) into final canvas (maintain quality)
+      const finalCanvas = document.createElement('canvas');
+      finalCanvas.width = CANVAS_SIZE;
+      finalCanvas.height = CANVAS_SIZE;
+      const fctx = finalCanvas.getContext('2d')!;
+      fctx.fillStyle = '#ffffff';
+      fctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+      fctx.drawImage(
+        rotateCanvas,
+        dxFinal,
+        dyFinal,
+        rotateCanvas.width * scale,
+        rotateCanvas.height * scale,
+      );
+
+      let output = finalCanvas.toDataURL('image/jpeg', 0.95);
+
+      // 9) apply white background removal only if enabled (dynamic import)
+      try {
+        output = await applyWhiteBackground(output);
+      } catch (e) {
+        // not fatal — just warn
+        console.warn('applyWhiteBackground failed:', e);
+      }
+
+      return output;
+    },
+    [modelsLoaded, applyWhiteBackground, loadImageBitmapOrElement],
+  );
+
+  // ---------- helper: limited concurrency runner ----------
+  const runWithConcurrency = useCallback(
+    async (files: File[], concurrency = DEFAULT_CONCURRENCY) => {
+      const resultsArr: CroppedResult[] = [];
+      let idx = 0;
+      const errors: string[] = [];
+
+      const worker = async () => {
+        while (true) {
+          const i = idx++;
+          if (i >= files.length) return;
+          const file = files[i];
+          try {
+            const url = await cropSingleImage(file);
+            resultsArr.push({ id: crypto.randomUUID(), name: file.name, url });
+          } catch (err) {
+            console.warn('Crop failed for', file.name, err);
+            errors.push(`${file.name}`);
+          }
+        }
+      };
+
+      const workers: Promise<void>[] = [];
+      for (let i = 0; i < Math.min(concurrency, files.length); i++) {
+        workers.push(worker());
+      }
+      await Promise.all(workers);
+
+      return { resultsArr, errors };
+    },
+    [cropSingleImage],
+  );
+
+  // ---------- handle input files ----------
   const handleFiles = useCallback(
-    async (e: ChangeEvent<HTMLInputElement>) => {
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(e.target.files || []);
       if (files.length === 0) return;
 
@@ -194,24 +292,23 @@ export const Cropper: React.FC = () => {
       setError(null);
       setResults([]);
 
-      const processed: CroppedResult[] = [];
-
-      for (const file of files) {
-        try {
-          const result = await cropSingleImage(file);
-          if (result) processed.push({ id: crypto.randomUUID(), name: file.name, url: result });
-        } catch {
-          setError(`Some pictures could not be detected: ${file.name}`);
+      try {
+        const { resultsArr, errors } = await runWithConcurrency(files, DEFAULT_CONCURRENCY);
+        if (errors.length) {
+          setError(`Some pictures could not be processed: ${errors.join(', ')}`);
         }
+        setResults(resultsArr);
+      } catch (err) {
+        console.error('Processing error:', err);
+        setError('Processing failed. See console.');
+      } finally {
+        setLoading(false);
       }
-
-      setResults(processed);
-      setLoading(false);
     },
-    [cropSingleImage],
+    [runWithConcurrency],
   );
 
-  // === UI ===
+  // ---------- render ----------
   return (
     <div>
       <div className="mx-[10px] md:mx-[40px] mt-[2.5rem] mb-[1.5rem] text-black text-center space-y-1">
@@ -235,12 +332,14 @@ export const Cropper: React.FC = () => {
           onChange={handleFiles}
           className="hidden"
         />
-
-        {/* 🔹 White Background Checkbox */}
       </div>
+
       <label className="flex items-center space-x-2 mt-1">
         <input type="checkbox" checked={whiteBg} onChange={(e) => setWhiteBg(e.target.checked)} />
-        <span className="text-base font-semibold">{t('white-bg')}</span>
+        <div className="flex items-center gap-1 flex-wrap">
+          <span className="text-sm sm:text-base">{t('white-bg')}</span>
+          <span className="text-xs text-red-500 font-normal">{t('takes-a-time')}</span>
+        </div>
       </label>
 
       <div className="border border-gray-300 rounded my-4">

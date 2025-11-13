@@ -26,5 +26,6 @@
     "login-error": "Tizimga kirish xatosi",
     "login-failed": "Muvaffaqiyatsiz qaydlar",
     "password": "Parol"
-  }
+  },
+  "takes-a-time": "Vaqt talab etiladi"
 }

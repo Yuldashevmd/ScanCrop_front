@@ -5,7 +5,10 @@ import {
   type FetchArgs,
 } from '@reduxjs/toolkit/query/react';
 
-const baseUrl = import.meta.env.VITE_APP_URL_DEV;
+const baseUrl =
+  import.meta.env.VITE_APP_REACT === 'dev'
+    ? import.meta.env.VITE_APP_URL_DEV
+    : import.meta.env.VITE_APP_URL_PROD;
 
 const baseQuery = async (
   args: string | FetchArgs,
