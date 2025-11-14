@@ -27,5 +27,6 @@
     "login-failed": "Muvaffaqiyatsiz qaydlar",
     "password": "Parol"
   },
-  "takes-a-time": "Vaqt talab etiladi"
+  "takes-a-time": "Vaqt talab etiladi",
+  "warning": "Natijada bir oz farq qilishi mumkin va kafolatlanmaydi, shuning uchun natijani o'zingiz tekshiring!"
 }
