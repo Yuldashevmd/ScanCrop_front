@@ -7,7 +7,7 @@
   "download-all": "Download all",
   "login": "Login",
   "app-name": "Photo maker ",
-  "crop-title": "Photo maker for DV2027 program",
+  "crop-title": "Photo maker for DV-2027 program",
   "crop-desc": "Photos will not be saved, to maintain your privacy",
   "upload": "Upload photos",
   "white-bg": "Apply white background (AI)",
@@ -27,5 +27,6 @@
     "login-failed": "Failed logging in ",
     "password": "Password"
   },
-  "takes-a-time": "Takes a time"
+  "takes-a-time": "Takes a time",
+  "warning": "The result may vary slightly and is not guaranteed, so please check the result yourself as well!"
 }
