@@ -355,7 +355,6 @@ export const Cropper: React.FC = () => {
       <div className="mx-[10px] md:mx-[40px] mt-[2.5rem] mb-[1.5rem] text-black text-center space-y-1">
         <h3 className=" text-[24px]">{t('crop-title')}</h3>
         <p className="text-sm sm:text-base">{t('crop-desc')}</p>
-        <p className="text-sm sm:text-base text-red-400">{t('warning')}</p>
       </div>
       <hr className="text-gray-200 my-3" />
 
