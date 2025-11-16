@@ -58,31 +58,27 @@ export const Cropper: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [modelsLoaded, setModelsLoaded] = useState(false);
-
-  // ★ NEW: background-removal tayyorligini belgilovchi state
-  const [bgReady, setBgReady] = useState(false);
-
+  const [bgRemovalReady, setBgRemovalReady] = useState(false);
   const [whiteBg, setWhiteBg] = useState(false);
 
   // --------------------------------------------
-  // PRELOAD background-removal (FULL INIT)
-  // Bu WASM worker birinchi yuklanganda to‘liq ishga tushadi!
+  // PRELOAD background-removal (WASM first load fix)
   // --------------------------------------------
   useEffect(() => {
     (async () => {
       try {
-        const { removeBackground } = await import('@imgly/background-removal');
+        const { preload } = await import('@imgly/background-removal');
 
-        // Dummy image bilan WASMni to‘liq initialize qilamiz
-        const empty = new Blob([new Uint8Array(10)], { type: 'image/png' });
-        try {
-          await removeBackground(new File([empty], 'init.png'));
-        } catch {}
+        // Preload models with configuration
+        await preload({
+          publicPath: 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/',
+        });
 
-        setBgReady(true);
-        console.log('background-removal fully ready');
+        setBgRemovalReady(true);
+        console.log('background-removal ready');
       } catch (e) {
         console.warn('bg preload error', e);
+        setBgRemovalReady(true); // Still allow app to work without bg removal
       }
     })();
   }, []);
@@ -112,32 +108,38 @@ export const Cropper: React.FC = () => {
   // --------------------------------------------
   const applyWhiteBackground = useCallback(
     async (dataUrl: string): Promise<string> => {
-      // ★ apply faqat bgReady true bo‘lsa ishlaydi
-      if (!whiteBg || !bgReady) return dataUrl;
+      if (!whiteBg) return dataUrl;
 
-      const { removeBackground } = await import('@imgly/background-removal');
+      try {
+        const { removeBackground } = await import('@imgly/background-removal');
 
-      const blob = await (await fetch(dataUrl)).blob();
-      const file = new File([blob], 'input.png', { type: blob.type });
+        const blob = await (await fetch(dataUrl)).blob();
+        const file = new File([blob], 'input.png', { type: blob.type });
 
-      const removed = await removeBackground(file, {
-        output: { format: 'image/png', quality: 1 },
-      });
+        const removed = await removeBackground(file, {
+          output: { format: 'image/png', quality: 1 },
+        });
 
-      const bmp = await createImageBitmap(removed);
+        const bmp = await createImageBitmap(removed);
 
-      const c = document.createElement('canvas');
-      c.width = bmp.width;
-      c.height = bmp.height;
+        const c = document.createElement('canvas');
+        c.width = bmp.width;
+        c.height = bmp.height;
 
-      const ctx = c.getContext('2d')!;
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, c.width, c.height);
-      ctx.drawImage(bmp, 0, 0);
+        const ctx = c.getContext('2d')!;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, c.width, c.height);
+        ctx.drawImage(bmp, 0, 0);
 
-      return c.toDataURL('image/png');
+        return c.toDataURL('image/png');
+      } catch (e) {
+        console.error('Background removal failed:', e);
+        // Return original image if bg removal fails
+
+        return dataUrl;
+      }
     },
-    [whiteBg, bgReady],
+    [whiteBg],
   );
 
   // --------------------------------------------
@@ -281,7 +283,7 @@ export const Cropper: React.FC = () => {
       let output = await ensureJpegSize(finalC, 200, 240);
 
       // apply white background if needed
-      if (whiteBg && bgReady) {
+      if (whiteBg) {
         output = await applyWhiteBackground(output);
 
         // white background applied → must re-compress to 200–240kb
@@ -298,7 +300,7 @@ export const Cropper: React.FC = () => {
 
       return output;
     },
-    [modelsLoaded, applyWhiteBackground, loadImageBitmapOrElement, whiteBg, bgReady],
+    [modelsLoaded, applyWhiteBackground, loadImageBitmapOrElement, whiteBg],
   );
 
   // --------------------------------------------
@@ -342,9 +344,9 @@ export const Cropper: React.FC = () => {
       const files = Array.from(e.target.files || []);
       if (!files.length) return;
 
-      // ★ Agar background-removal ishlatilsa, tayyorligini kutish
-      if (whiteBg && !bgReady) {
-        setError('Background removal is initializing, please wait 1–2 seconds...');
+      // Check if background removal is needed but not ready
+      if (whiteBg && !bgRemovalReady) {
+        setError('Background removal is still loading. Please wait a moment and try again.');
 
         return;
       }
@@ -365,7 +367,7 @@ export const Cropper: React.FC = () => {
         setLoading(false);
       }
     },
-    [runWithConcurrency, whiteBg, bgReady],
+    [runWithConcurrency, whiteBg, bgRemovalReady],
   );
 
   // --------------------------------------------
@@ -397,10 +399,18 @@ export const Cropper: React.FC = () => {
       </div>
 
       <label className="flex items-center space-x-2 mt-1">
-        <input type="checkbox" checked={whiteBg} onChange={(e) => setWhiteBg(e.target.checked)} />
+        <input
+          type="checkbox"
+          checked={whiteBg}
+          onChange={(e) => setWhiteBg(e.target.checked)}
+          disabled={!bgRemovalReady}
+        />
         <div className="flex items-center gap-1 flex-wrap">
           <span className="text-sm sm:text-base">{t('white-bg')}</span>
           <span className="text-xs text-red-500 font-normal">{t('takes-a-time')}</span>
+          {!bgRemovalReady && (
+            <span className="text-xs text-orange-500 font-normal">(Loading...)</span>
+          )}
         </div>
       </label>
 
