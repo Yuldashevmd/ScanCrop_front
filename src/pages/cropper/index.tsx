@@ -58,16 +58,29 @@ export const Cropper: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [modelsLoaded, setModelsLoaded] = useState(false);
+
+  // ★ NEW: background-removal tayyorligini belgilovchi state
+  const [bgReady, setBgReady] = useState(false);
+
   const [whiteBg, setWhiteBg] = useState(false);
 
   // --------------------------------------------
-  // PRELOAD background-removal (WASM first load fix)
+  // PRELOAD background-removal (FULL INIT)
+  // Bu WASM worker birinchi yuklanganda to‘liq ishga tushadi!
   // --------------------------------------------
   useEffect(() => {
     (async () => {
       try {
-        await import('@imgly/background-removal');
-        console.log('background-removal preloaded');
+        const { removeBackground } = await import('@imgly/background-removal');
+
+        // Dummy image bilan WASMni to‘liq initialize qilamiz
+        const empty = new Blob([new Uint8Array(10)], { type: 'image/png' });
+        try {
+          await removeBackground(new File([empty], 'init.png'));
+        } catch {}
+
+        setBgReady(true);
+        console.log('background-removal fully ready');
       } catch (e) {
         console.warn('bg preload error', e);
       }
@@ -99,7 +112,8 @@ export const Cropper: React.FC = () => {
   // --------------------------------------------
   const applyWhiteBackground = useCallback(
     async (dataUrl: string): Promise<string> => {
-      if (!whiteBg) return dataUrl;
+      // ★ apply faqat bgReady true bo‘lsa ishlaydi
+      if (!whiteBg || !bgReady) return dataUrl;
 
       const { removeBackground } = await import('@imgly/background-removal');
 
@@ -123,7 +137,7 @@ export const Cropper: React.FC = () => {
 
       return c.toDataURL('image/png');
     },
-    [whiteBg],
+    [whiteBg, bgReady],
   );
 
   // --------------------------------------------
@@ -267,7 +281,7 @@ export const Cropper: React.FC = () => {
       let output = await ensureJpegSize(finalC, 200, 240);
 
       // apply white background if needed
-      if (whiteBg) {
+      if (whiteBg && bgReady) {
         output = await applyWhiteBackground(output);
 
         // white background applied → must re-compress to 200–240kb
@@ -284,7 +298,7 @@ export const Cropper: React.FC = () => {
 
       return output;
     },
-    [modelsLoaded, applyWhiteBackground, loadImageBitmapOrElement, whiteBg],
+    [modelsLoaded, applyWhiteBackground, loadImageBitmapOrElement, whiteBg, bgReady],
   );
 
   // --------------------------------------------
@@ -328,6 +342,13 @@ export const Cropper: React.FC = () => {
       const files = Array.from(e.target.files || []);
       if (!files.length) return;
 
+      // ★ Agar background-removal ishlatilsa, tayyorligini kutish
+      if (whiteBg && !bgReady) {
+        setError('Background removal is initializing, please wait 1–2 seconds...');
+
+        return;
+      }
+
       setLoading(true);
       setError(null);
       setResults([]);
@@ -344,7 +365,7 @@ export const Cropper: React.FC = () => {
         setLoading(false);
       }
     },
-    [runWithConcurrency],
+    [runWithConcurrency, whiteBg, bgReady],
   );
 
   // --------------------------------------------
