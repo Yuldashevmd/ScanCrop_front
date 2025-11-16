@@ -58,6 +58,7 @@ export const Cropper: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [modelsLoaded, setModelsLoaded] = useState(false);
+  const [bgRemovalReady, setBgRemovalReady] = useState(false);
   const [whiteBg, setWhiteBg] = useState(false);
 
   // --------------------------------------------
@@ -66,10 +67,18 @@ export const Cropper: React.FC = () => {
   useEffect(() => {
     (async () => {
       try {
-        await import('@imgly/background-removal');
-        console.log('background-removal preloaded');
+        const { preload } = await import('@imgly/background-removal');
+
+        // Preload models with configuration
+        await preload({
+          publicPath: 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/',
+        });
+
+        setBgRemovalReady(true);
+        console.log('background-removal ready');
       } catch (e) {
         console.warn('bg preload error', e);
+        setBgRemovalReady(true); // Still allow app to work without bg removal
       }
     })();
   }, []);
@@ -101,27 +110,34 @@ export const Cropper: React.FC = () => {
     async (dataUrl: string): Promise<string> => {
       if (!whiteBg) return dataUrl;
 
-      const { removeBackground } = await import('@imgly/background-removal');
+      try {
+        const { removeBackground } = await import('@imgly/background-removal');
 
-      const blob = await (await fetch(dataUrl)).blob();
-      const file = new File([blob], 'input.png', { type: blob.type });
+        const blob = await (await fetch(dataUrl)).blob();
+        const file = new File([blob], 'input.png', { type: blob.type });
 
-      const removed = await removeBackground(file, {
-        output: { format: 'image/png', quality: 1 },
-      });
+        const removed = await removeBackground(file, {
+          output: { format: 'image/png', quality: 1 },
+        });
 
-      const bmp = await createImageBitmap(removed);
+        const bmp = await createImageBitmap(removed);
 
-      const c = document.createElement('canvas');
-      c.width = bmp.width;
-      c.height = bmp.height;
+        const c = document.createElement('canvas');
+        c.width = bmp.width;
+        c.height = bmp.height;
 
-      const ctx = c.getContext('2d')!;
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, c.width, c.height);
-      ctx.drawImage(bmp, 0, 0);
+        const ctx = c.getContext('2d')!;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, c.width, c.height);
+        ctx.drawImage(bmp, 0, 0);
 
-      return c.toDataURL('image/png');
+        return c.toDataURL('image/png');
+      } catch (e) {
+        console.error('Background removal failed:', e);
+        // Return original image if bg removal fails
+
+        return dataUrl;
+      }
     },
     [whiteBg],
   );
@@ -328,6 +344,13 @@ export const Cropper: React.FC = () => {
       const files = Array.from(e.target.files || []);
       if (!files.length) return;
 
+      // Check if background removal is needed but not ready
+      if (whiteBg && !bgRemovalReady) {
+        setError('Background removal is still loading. Please wait a moment and try again.');
+
+        return;
+      }
+
       setLoading(true);
       setError(null);
       setResults([]);
@@ -344,7 +367,7 @@ export const Cropper: React.FC = () => {
         setLoading(false);
       }
     },
-    [runWithConcurrency],
+    [runWithConcurrency, whiteBg, bgRemovalReady],
   );
 
   // --------------------------------------------
@@ -376,10 +399,18 @@ export const Cropper: React.FC = () => {
       </div>
 
       <label className="flex items-center space-x-2 mt-1">
-        <input type="checkbox" checked={whiteBg} onChange={(e) => setWhiteBg(e.target.checked)} />
+        <input
+          type="checkbox"
+          checked={whiteBg}
+          onChange={(e) => setWhiteBg(e.target.checked)}
+          disabled={!bgRemovalReady}
+        />
         <div className="flex items-center gap-1 flex-wrap">
           <span className="text-sm sm:text-base">{t('white-bg')}</span>
           <span className="text-xs text-red-500 font-normal">{t('takes-a-time')}</span>
+          {!bgRemovalReady && (
+            <span className="text-xs text-orange-500 font-normal">(Loading...)</span>
+          )}
         </div>
       </label>
 
