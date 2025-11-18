@@ -1,4 +1,5 @@
 import { AuthProfile } from 'features/auth-profile';
+import { ChangeLangugage } from 'features/change-language';
 import { Link } from 'react-router';
 import { useLang } from 'shared/lib';
 
@@ -12,8 +13,10 @@ export function HeaderUI() {
           <h2 className="text-xl font-semibold">{t('app-name')}</h2>
         </Link>
 
-        {/* AUTH */}
-        <AuthProfile />
+        <div className="flex items-center gap-2">
+          <ChangeLangugage />
+          <AuthProfile />
+        </div>
       </section>
     </header>
   );
