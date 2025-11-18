@@ -8,7 +8,7 @@
   "login": "Tizimga kirish",
   "app-name": "Fotosuratlar",
   "crop-title": "Fotosuratlar DV2027 dasturi uchun",
-  "crop-desc": "Sizning shaxsiy hayotingizni saqlab qolish uchun fotosuratlar saqlanmaydi",
+  "crop-desc": "Sizning rasmlaringiz uchun to'liq maxfiylikni kafolatlaymiz. \nBarcha rasmlar avtomatik ravishda qayta ishlanadi va qayta ishlangandan keyin serverda saqlanmaydi.",
   "upload": "Rasmlarni yuklash",
   "white-bg": "Oq fonni qo'llang (AI)",
   "images": "Rasmlar",
@@ -27,5 +27,6 @@
     "login-failed": "Muvaffaqiyatsiz qaydlar",
     "password": "Parol"
   },
-  "takes-a-time": "Vaqt talab etiladi"
+  "takes-a-time": "Vaqt talab etiladi",
+  "warning": "Natijada bir oz farq qilishi mumkin va kafolatlanmaydi, shuning uchun natijani o'zingiz tekshiring!"
 }
