@@ -27,6 +27,6 @@
     "login-failed": "Failed logging in ",
     "password": "Password"
   },
-  "takes-a-time": "Takes a time",
+  "takes-a-time": "Takes a time depends speed of internet",
   "warning": "The result may vary slightly and is not guaranteed, so please check the result yourself as well!"
 }
